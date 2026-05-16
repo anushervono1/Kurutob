@@ -1019,22 +1019,49 @@ window.addEventListener('DOMContentLoaded',function(){
 });
 
 </script>
-  </div> <!-- закрыли #app -->
+  <script>
+  const EDGE_URL = "https://rusbxnqjyaqpegenafnq.supabase.co/functions/v1/verify-token";
 
-<script>
-const EDGE_URL = "https://rusbxnqjyaqpegenafnq.supabase.co/functions/v1/verify-token";
+  // Ждём, пока Telegram WebApp будет готов
+  function waitForTelegram() {
+    return new Promise((resolve) => {
+      if (window.Telegram?.WebApp) {
+        window.Telegram.WebApp.ready();
+        resolve(true);
+      } else {
+        // Если не в мини-приложении – просто сообщаем и не пускаем
+        document.body.innerHTML = "<h2>Пожалуйста, откройте приложение через кнопку мини-приложения в боте, а не по ссылке</h2>";
+        resolve(false);
+      }
+    });
+  }
 
-if (!window.Telegram?.WebApp) {
-  document.body.innerHTML = "<h2>Пожалуйста, откройте приложение через Telegram</h2>";
-  throw new Error("Не в Telegram");
-}
+  async function checkAccess() {
+    const tg = window.Telegram.WebApp;
+    let token = localStorage.getItem("valid_token");
+    if (token) {
+      const res = await fetch(EDGE_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, initData: tg.initData })
+      });
+      const data = await res.json();
+      if (data.success) {
+        window.savedProgress = data.progress;
+        return true;
+      } else {
+        localStorage.removeItem("valid_token");
+        alert("Сессия истекла. Введите токен заново.");
+        return false;
+      }
+    }
+    return false;
+  }
 
-const tg = window.Telegram.WebApp;
-tg.ready();
-
-async function checkAccess() {
-  let token = localStorage.getItem("valid_token");
-  if (token) {
+  async function askToken() {
+    const tg = window.Telegram.WebApp;
+    const token = prompt("Введите ваш токен доступа:");
+    if (!token) return false;
     const res = await fetch(EDGE_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1042,48 +1069,30 @@ async function checkAccess() {
     });
     const data = await res.json();
     if (data.success) {
+      localStorage.setItem("valid_token", token);
       window.savedProgress = data.progress;
       return true;
     } else {
-      localStorage.removeItem("valid_token");
-      alert("Сессия истекла. Введите токен заново.");
+      alert("Ошибка: " + data.error);
       return false;
     }
   }
-  return false;
-}
 
-async function askToken() {
-  const token = prompt("Введите ваш токен доступа:");
-  if (!token) return false;
-  const res = await fetch(EDGE_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ token, initData: tg.initData })
-  });
-  const data = await res.json();
-  if (data.success) {
-    localStorage.setItem("valid_token", token);
-    window.savedProgress = data.progress;
-    return true;
-  } else {
-    alert("Ошибка: " + data.error);
-    return false;
-  }
-}
+  (async () => {
+    const isTelegram = await waitForTelegram();
+    if (!isTelegram) return; // остановка, если не мини-приложение
 
-(async () => {
-  let ok = await checkAccess();
-  if (!ok) {
-    ok = await askToken();
-  }
-  if (!ok) {
-    document.body.innerHTML = "<h2>Доступ запрещён</h2>";
-    return;
-  }
-  document.getElementById("app").style.display = "block";
-  // Если есть функция загрузки прогресса, вызови её здесь
-})();
+    let ok = await checkAccess();
+    if (!ok) {
+      ok = await askToken();
+    }
+    if (!ok) {
+      document.body.innerHTML = "<h2>Доступ запрещён. Обратитесь к продавцу.</h2>";
+      return;
+    }
+    document.getElementById("app").style.display = "block";
+    // Здесь, если нужно, загрузите прогресс
+  })();
 </script>
  </body>
  </html>
