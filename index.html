@@ -491,7 +491,9 @@ body::before {
 .screen.active .stats-row { animation: fadeSlideUp 0.5s 0.2s ease both; }
 .screen.active .mode-grid { animation: fadeSlideUp 0.5s 0.3s ease both; }
 </style>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script>
+window.Telegram = window.Telegram || {};
+</script>
 </head>
 <body>
 
@@ -1149,18 +1151,16 @@ window.addEventListener('DOMContentLoaded',function(){
 
       const initData = getTelegramData();
 
-      const res = await fetch(API_URL,{
-        method:"POST",
-        headers:{
-          "Content-Type":"application/json", 
-          "Authorization": "Bearer
-        eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ1c2J4bnFqeWFxcGVnZW5hZm5xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4Njg3NTEsImV4cCI6MjA5NDQ0NDc1MX0.TqrWDSEID74IFXux9z8uEdF9-Kc8e6dJOsUYQIRxYNk"    
-        },
-        body:JSON.stringify({
-          token,
-          initData
-        })
-      });
+      const res = await fetch(API_URL, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    token,
+    initData
+  })
+});
 
       const data = await res.json();
 
