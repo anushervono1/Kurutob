@@ -1056,20 +1056,38 @@ window.addEventListener('DOMContentLoaded',function(){
   const btn = document.getElementById("tgTokenBtn");
   const errDiv = document.getElementById("tgError");
 
-  // Если не в Telegram Mini App – показываем просьбу открыть через кнопку Меню
-  if (!window.Telegram?.WebApp) {
+  // Получаем initData из URL (параметр tgWebAppData) или из объекта Telegram
+  function getInitData() {
+    // Пытаемся взять из URL (самый надёжный способ)
+    const urlParams = new URLSearchParams(window.location.search);
+    const dataFromUrl = urlParams.get('tgWebAppData');
+    if (dataFromUrl) return dataFromUrl;
+
+    // Если не получилось, пробуем через Telegram.WebApp
+    if (window.Telegram?.WebApp?.initData) {
+      return window.Telegram.WebApp.initData;
+    }
+    return null;
+  }
+
+  const initData = getInitData();
+
+  if (!initData) {
+    // Не удалось получить initData — значит, открыто не через мини-приложение
     modal.innerHTML = '<h2>Пожалуйста, откройте приложение через кнопку «Меню» в Telegram-боте</h2>';
     return;
   }
 
-  const tg = window.Telegram.WebApp;
-  tg.ready();
+  // Если есть Telegram API, используем его (не обязательно)
+  if (window.Telegram?.WebApp) {
+    window.Telegram.WebApp.ready();
+  }
 
   async function verifyToken(token) {
     const res = await fetch(EDGE_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, initData: tg.initData })
+      body: JSON.stringify({ token, initData: initData })
     });
     return await res.json();
   }
@@ -1094,7 +1112,7 @@ window.addEventListener('DOMContentLoaded',function(){
     // Токен недействителен или отсутствует – модалка остаётся
   })();
 
-  // Обработчик кнопки
+  // Обработчик кнопки активации
   btn.addEventListener("click", async () => {
     const token = input.value.trim();
     if (!token) {
@@ -1111,7 +1129,6 @@ window.addEventListener('DOMContentLoaded',function(){
         localStorage.setItem("valid_token", token);
         window.savedProgress = data.progress;
         modal.classList.add("hidden");
-        // Если есть функция загрузки прогресса – вызови её (можно добавить позже)
         if (typeof window.loadProgress === "function") {
           window.loadProgress(data.progress);
         }
