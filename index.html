@@ -1021,27 +1021,16 @@ window.addEventListener('DOMContentLoaded',function(){
 <script>
   const EDGE_URL = "https://rusbxnqjyaqpegenafnq.supabase.co/functions/v1/verify-token";
 
-  // Ждём появления Telegram.WebApp до 2 секунд
-  async function waitForTelegram() {
-    return new Promise((resolve) => {
-      const start = Date.now();
-      function check() {
-        if (window.Telegram?.WebApp) {
-          window.Telegram.WebApp.ready();
-          resolve(true);
-        } else if (Date.now() - start < 2000) {
-          setTimeout(check, 100);
-        } else {
-          document.body.innerHTML = "<h2>Пожалуйста, откройте приложение через кнопку «Меню» (рядом с полем ввода) в Telegram-боте</h2>";
-          resolve(false);
-        }
-      }
-      check();
-    });
+  // Проверяем наличие Telegram WebApp сразу
+  if (!window.Telegram?.WebApp) {
+    document.body.innerHTML = "<h2>Пожалуйста, откройте приложение через кнопку «Меню» в Telegram-боте</h2>";
+    throw new Error("Not in Telegram Mini App");
   }
 
+  const tg = window.Telegram.WebApp;
+  tg.ready();
+
   async function checkAccess() {
-    const tg = window.Telegram.WebApp;
     let token = localStorage.getItem("valid_token");
     if (token) {
       const res = await fetch(EDGE_URL, {
@@ -1063,7 +1052,6 @@ window.addEventListener('DOMContentLoaded',function(){
   }
 
   async function askToken() {
-    const tg = window.Telegram.WebApp;
     const token = prompt("Введите ваш токен доступа:");
     if (!token) return false;
     const res = await fetch(EDGE_URL, {
@@ -1083,9 +1071,6 @@ window.addEventListener('DOMContentLoaded',function(){
   }
 
   (async () => {
-    const isTelegram = await waitForTelegram();
-    if (!isTelegram) return;
-
     let ok = await checkAccess();
     if (!ok) {
       ok = await askToken();
@@ -1094,8 +1079,8 @@ window.addEventListener('DOMContentLoaded',function(){
       document.body.innerHTML = "<h2>Доступ запрещён. Обратитесь к продавцу.</h2>";
       return;
     }
+    // Показываем квиз
     document.getElementById("app").style.display = "block";
-    // Здесь можешь вызвать функцию загрузки прогресса, если нужно
   })();
 </script>
  </body>
