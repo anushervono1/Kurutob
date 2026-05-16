@@ -1018,20 +1018,25 @@ window.addEventListener('DOMContentLoaded',function(){
   initHome();
 });
   
-  <script>
+<script>
   const EDGE_URL = "https://rusbxnqjyaqpegenafnq.supabase.co/functions/v1/verify-token";
 
-  // Ждём, пока Telegram WebApp будет готов
-  function waitForTelegram() {
+  // Ждём появления Telegram.WebApp до 2 секунд
+  async function waitForTelegram() {
     return new Promise((resolve) => {
-      if (window.Telegram?.WebApp) {
-        window.Telegram.WebApp.ready();
-        resolve(true);
-      } else {
-        // Если не в мини-приложении – просто сообщаем и не пускаем
-        document.body.innerHTML = "<h2>Пожалуйста, откройте приложение через кнопку мини-приложения в боте, а не по ссылке</h2>";
-        resolve(false);
+      const start = Date.now();
+      function check() {
+        if (window.Telegram?.WebApp) {
+          window.Telegram.WebApp.ready();
+          resolve(true);
+        } else if (Date.now() - start < 2000) {
+          setTimeout(check, 100);
+        } else {
+          document.body.innerHTML = "<h2>Пожалуйста, откройте приложение через кнопку «Меню» (рядом с полем ввода) в Telegram-боте</h2>";
+          resolve(false);
+        }
       }
+      check();
     });
   }
 
@@ -1079,7 +1084,7 @@ window.addEventListener('DOMContentLoaded',function(){
 
   (async () => {
     const isTelegram = await waitForTelegram();
-    if (!isTelegram) return; // остановка, если не мини-приложение
+    if (!isTelegram) return;
 
     let ok = await checkAccess();
     if (!ok) {
@@ -1090,7 +1095,7 @@ window.addEventListener('DOMContentLoaded',function(){
       return;
     }
     document.getElementById("app").style.display = "block";
-    // Здесь, если нужно, загрузите прогресс
+    // Здесь можешь вызвать функцию загрузки прогресса, если нужно
   })();
 </script>
  </body>
