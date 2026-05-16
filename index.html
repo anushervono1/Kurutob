@@ -1045,23 +1045,7 @@ window.addEventListener('DOMContentLoaded',function(){
   <button id="tgTokenBtn">Активировать</button>
   <div class="error" id="tgError"></div>
 </div>
-<script>
-alert('Скрипт запустился');
-try {
-  const EDGE_URL = "https://rusbxnqjyaqpegenafnq.supabase.co/functions/v1/verify-token";
-  alert('Проверяем Telegram');
-  if (!window.Telegram?.WebApp) {
-    document.body.innerHTML = "<h2>Не в Telegram</h2>";
-    throw new Error("Не в Telegram");
-  }
-  alert('Telegram есть');
-  const tg = window.Telegram.WebApp;
-  tg.ready();
-  alert('ready отработал');
-  // ... (дальше пока не нужно, просто проверяем начало)
-} catch(e) {
-  alert('Ошибка: ' + e.message);
-}
+
 </script>
  </body>
  </html>
