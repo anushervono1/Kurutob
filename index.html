@@ -493,7 +493,7 @@ body::before {
 </style>
 </head>
 <body>
-
+<div id="app" style="display: none;">
 <div id="home" class="screen active">
   <div class="home-inner">
     <div class="mascot-wrap" id="mascotWrap" onclick="cycleMascotEmotion()">
@@ -1018,6 +1018,72 @@ window.addEventListener('DOMContentLoaded',function(){
   initHome();
 });
 
+</script>
+  </div> <!-- закрыли #app -->
+
+<script>
+const EDGE_URL = "https://rusbxnqjyaqpegenafnq.supabase.co/functions/v1/verify-token";
+
+if (!window.Telegram?.WebApp) {
+  document.body.innerHTML = "<h2>Пожалуйста, откройте приложение через Telegram</h2>";
+  throw new Error("Не в Telegram");
+}
+
+const tg = window.Telegram.WebApp;
+tg.ready();
+
+async function checkAccess() {
+  let token = localStorage.getItem("valid_token");
+  if (token) {
+    const res = await fetch(EDGE_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, initData: tg.initData })
+    });
+    const data = await res.json();
+    if (data.success) {
+      window.savedProgress = data.progress;
+      return true;
+    } else {
+      localStorage.removeItem("valid_token");
+      alert("Сессия истекла. Введите токен заново.");
+      return false;
+    }
+  }
+  return false;
+}
+
+async function askToken() {
+  const token = prompt("Введите ваш токен доступа:");
+  if (!token) return false;
+  const res = await fetch(EDGE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, initData: tg.initData })
+  });
+  const data = await res.json();
+  if (data.success) {
+    localStorage.setItem("valid_token", token);
+    window.savedProgress = data.progress;
+    return true;
+  } else {
+    alert("Ошибка: " + data.error);
+    return false;
+  }
+}
+
+(async () => {
+  let ok = await checkAccess();
+  if (!ok) {
+    ok = await askToken();
+  }
+  if (!ok) {
+    document.body.innerHTML = "<h2>Доступ запрещён</h2>";
+    return;
+  }
+  document.getElementById("app").style.display = "block";
+  // Если есть функция загрузки прогресса, вызови её здесь
+})();
 </script>
  </body>
  </html>
