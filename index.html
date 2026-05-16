@@ -493,7 +493,6 @@ body::before {
 </style>
 </head>
 <body>
-<div id="app" style="display: none;">
 <div id="home" class="screen active">
   <div class="home-inner">
     <div class="mascot-wrap" id="mascotWrap" onclick="cycleMascotEmotion()">
@@ -1046,75 +1045,23 @@ window.addEventListener('DOMContentLoaded',function(){
   <button id="tgTokenBtn">Активировать</button>
   <div class="error" id="tgError"></div>
 </div>
-
 <script>
-  (function() {
-    const EDGE_URL = "https://rusbxnqjyaqpegenafnq.supabase.co/functions/v1/verify-token";
-    const modal = document.getElementById("tgAuthModal");
-    const input = document.getElementById("tgTokenInput");
-    const btn = document.getElementById("tgTokenBtn");
-    const errDiv = document.getElementById("tgError");
-
-    // Проверяем, что мы в Telegram Mini App
-    if (!window.Telegram?.WebApp) {
-      document.body.innerHTML = "<h2>Пожалуйста, откройте приложение через кнопку «Меню» в Telegram-боте</h2>";
-      return;
-    }
-    const tg = window.Telegram.WebApp;
-    tg.ready();
-
-    async function verifyToken(token) {
-      const res = await fetch(EDGE_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, initData: tg.initData })
-      });
-      return await res.json();
-    }
-
-    // При загрузке проверяем сохранённый токен
-    (async function init() {
-      const savedToken = localStorage.getItem("valid_token");
-      if (savedToken) {
-        const data = await verifyToken(savedToken);
-        if (data.success) {
-          window.savedProgress = data.progress;
-          modal.classList.add("hidden"); // скрываем модалку, квиз уже виден
-          return;
-        } else {
-          localStorage.removeItem("valid_token");
-          // Если токен недействителен — показываем модалку (она уже видна)
-        }
-      }
-      // Модалка остаётся видимой
-    })();
-
-    // Кнопка активации
-    btn.addEventListener("click", async () => {
-      const token = input.value.trim();
-      if (!token) {
-        errDiv.textContent = "Введите токен";
-        return;
-      }
-      btn.disabled = true;
-      btn.textContent = "Проверка...";
-      errDiv.textContent = "";
-      const data = await verifyToken(token);
-      if (data.success) {
-        localStorage.setItem("valid_token", token);
-        window.savedProgress = data.progress;
-        modal.classList.add("hidden");
-        // Загружаем прогресс, если есть функция
-        if (typeof window.loadProgress === "function") {
-          window.loadProgress(data.progress);
-        }
-      } else {
-        errDiv.textContent = data.error || "Неверный токен";
-        btn.disabled = false;
-        btn.textContent = "Активировать";
-      }
-    });
-  })();
+alert('Скрипт запустился');
+try {
+  const EDGE_URL = "https://rusbxnqjyaqpegenafnq.supabase.co/functions/v1/verify-token";
+  alert('Проверяем Telegram');
+  if (!window.Telegram?.WebApp) {
+    document.body.innerHTML = "<h2>Не в Telegram</h2>";
+    throw new Error("Не в Telegram");
+  }
+  alert('Telegram есть');
+  const tg = window.Telegram.WebApp;
+  tg.ready();
+  alert('ready отработал');
+  // ... (дальше пока не нужно, просто проверяем начало)
+} catch(e) {
+  alert('Ошибка: ' + e.message);
+}
 </script>
  </body>
  </html>
