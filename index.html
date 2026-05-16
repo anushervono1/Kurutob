@@ -491,6 +491,7 @@ body::before {
 .screen.active .stats-row { animation: fadeSlideUp 0.5s 0.2s ease both; }
 .screen.active .mode-grid { animation: fadeSlideUp 0.5s 0.3s ease both; }
 </style>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
 
@@ -1019,130 +1020,211 @@ window.addEventListener('DOMContentLoaded',function(){
 });
 
 </script>
-<!-- 🔐 МОДАЛЬНОЕ ОКНО ПРОВЕРКИ ТОКЕНА -->
-<style>
-  .tg-auth-modal {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: #0B0F1A; z-index: 9999;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    font-family: 'Space Grotesk', sans-serif; color: #F8FAFC;
-  }
-  .tg-auth-modal.hidden { display: none; }
-  .tg-auth-modal h2 { font-size: 20px; margin-bottom: 12px; }
-  .tg-auth-modal input {
-    padding: 12px 16px; border-radius: 12px; border: 1px solid #1f2d42;
-    background: #111827; color: #F8FAFC; font-size: 16px; width: 80%; max-width: 280px;
-    outline: none; margin-bottom: 12px;
-  }
-  .tg-auth-modal button {
-    padding: 12px 32px; border-radius: 12px; background: #7C3AED; color: #fff;
-    font-weight: 600; border: none; cursor: pointer; font-size: 16px;
-  }
-  .tg-auth-modal .error { color: #EF4444; margin-top: 8px; font-size: 14px; }
-</style>
+  <!-- TOKEN OVERLAY -->
+<div id="tokenOverlay">
+  <div class="token-box">
+    <h2>Доступ к квизу</h2>
+    <p>Введите токен доступа</p>
 
-<div class="tg-auth-modal" id="tgAuthModal">
-  <h2>Введите ваш токен</h2>
-  <input type="text" id="tgTokenInput" placeholder="KRT-XXXXXXXX-XXXXXX" />
-  <button id="tgTokenBtn">Активировать</button>
-  <div class="error" id="tgError"></div>
+    <input
+      type="text"
+      id="tokenInput"
+      placeholder="TOKEN-XXXX"
+      autocomplete="off"
+    />
+
+    <button id="tokenBtn">Продолжить</button>
+
+    <div id="tokenError"></div>
+  </div>
 </div>
 
+<style>
+#tokenOverlay{
+  position:fixed;
+  inset:0;
+  background:#0a0a0a;
+  z-index:999999;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-family:Arial,sans-serif;
+}
+
+.token-box{
+  width:90%;
+  max-width:420px;
+  background:#111;
+  border:1px solid #222;
+  border-radius:20px;
+  padding:24px;
+  box-sizing:border-box;
+  text-align:center;
+  color:#fff;
+}
+
+.token-box h2{
+  margin-top:0;
+  margin-bottom:10px;
+}
+
+.token-box p{
+  opacity:.7;
+  margin-bottom:20px;
+}
+
+#tokenInput{
+  width:100%;
+  height:52px;
+  border:none;
+  border-radius:12px;
+  background:#1b1b1b;
+  color:#fff;
+  padding:0 16px;
+  box-sizing:border-box;
+  font-size:16px;
+  margin-bottom:14px;
+}
+
+#tokenInput:focus{
+  outline:none;
+}
+
+#tokenBtn{
+  width:100%;
+  height:52px;
+  border:none;
+  border-radius:12px;
+  background:#fff;
+  color:#000;
+  font-weight:700;
+  cursor:pointer;
+  font-size:16px;
+}
+
+#tokenError{
+  margin-top:14px;
+  color:#ff6b6b;
+  min-height:20px;
+  font-size:14px;
+}
+</style>
+
 <script>
-(function() {
-  const EDGE_URL = "https://rusbxnqjyaqpegenafnq.supabase.co/functions/v1/verify-token";
-  const modal = document.getElementById("tgAuthModal");
-  const input = document.getElementById("tgTokenInput");
-  const btn = document.getElementById("tgTokenBtn");
-  const errDiv = document.getElementById("tgError");
+(function(){
 
-  // Получаем initData из URL (параметр tgWebAppData) или из объекта Telegram
-  function getInitData() {
-    // Пытаемся взять из URL (самый надёжный способ)
-    const urlParams = new URLSearchParams(window.location.search);
-    const dataFromUrl = urlParams.get('tgWebAppData');
-    if (dataFromUrl) return dataFromUrl;
+  const overlay = document.getElementById("tokenOverlay");
+  const input = document.getElementById("tokenInput");
+  const btn = document.getElementById("tokenBtn");
+  const error = document.getElementById("tokenError");
 
-    // Если не получилось, пробуем через Telegram.WebApp
-    if (window.Telegram?.WebApp?.initData) {
-      return window.Telegram.WebApp.initData;
-    }
-    return null;
-  }
+  const API_URL =
+    "https://rusbxnqjyaqpegenafnq.supabase.co/functions/v1/verify-token";
 
-  const initData = getInitData();
-
-  if (!initData) {
-    // Не удалось получить initData — значит, открыто не через мини-приложение
-    modal.innerHTML = '<h2>Пожалуйста, откройте приложение через кнопку «Меню» в Telegram-боте</h2>';
-    return;
-  }
-
-  // Если есть Telegram API, используем его (не обязательно)
-  if (window.Telegram?.WebApp) {
-    window.Telegram.WebApp.ready();
-  }
-
-  async function verifyToken(token) {
-    const res = await fetch(EDGE_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, initData: initData })
-    });
-    return await res.json();
-  }
-
-  // При загрузке проверяем сохранённый токен
-  (async function init() {
-    const savedToken = localStorage.getItem("valid_token");
-    if (savedToken) {
-      try {
-        const data = await verifyToken(savedToken);
-        if (data.success) {
-          window.savedProgress = data.progress;
-          modal.classList.add("hidden"); // скрываем модалку, квиз уже виден
-          return;
-        } else {
-          localStorage.removeItem("valid_token");
-        }
-      } catch (e) {
-        console.error("Ошибка проверки:", e);
-      }
-    }
-    // Токен недействителен или отсутствует – модалка остаётся
-  })();
-
-  // Обработчик кнопки активации
-  btn.addEventListener("click", async () => {
-    const token = input.value.trim();
-    if (!token) {
-      errDiv.textContent = "Введите токен";
-      return;
-    }
-    btn.disabled = true;
-    btn.textContent = "Проверка...";
-    errDiv.textContent = "";
+  function getTelegramData() {
 
     try {
-      const data = await verifyToken(token);
-      if (data.success) {
-        localStorage.setItem("valid_token", token);
-        window.savedProgress = data.progress;
-        modal.classList.add("hidden");
-        if (typeof window.loadProgress === "function") {
-          window.loadProgress(data.progress);
-        }
-      } else {
-        errDiv.textContent = data.error || "Неверный токен";
-        btn.disabled = false;
-        btn.textContent = "Активировать";
+
+      if (window.Telegram &&
+          Telegram.WebApp &&
+          Telegram.WebApp.initData) {
+
+        Telegram.WebApp.ready();
+
+        return Telegram.WebApp.initData;
       }
-    } catch (e) {
-      errDiv.textContent = "Ошибка соединения";
+
+    } catch(e){}
+
+    return "";
+  }
+
+  async function verifyToken(token){
+
+    error.textContent = "";
+    btn.disabled = true;
+    btn.textContent = "Проверка...";
+
+    try {
+
+      const initData = getTelegramData();
+
+      const res = await fetch(API_URL,{
+        method:"POST",
+        headers:{
+          "Content-Type":"application/json"
+        },
+        body:JSON.stringify({
+          token,
+          initData
+        })
+      });
+
+      const data = await res.json();
+
+      if(!data.success){
+        throw new Error(data.error || "Ошибка доступа");
+      }
+
+      localStorage.setItem("quiz_token", token);
+
+      overlay.style.display = "none";
+
+      console.log("ACCESS GRANTED");
+
+    } catch(err){
+
+      error.textContent = err.message || "Ошибка";
+
+      console.error(err);
+
+    } finally {
+
       btn.disabled = false;
-      btn.textContent = "Активировать";
+      btn.textContent = "Продолжить";
+
+    }
+  }
+
+  btn.addEventListener("click", () => {
+
+    const token = input.value.trim();
+
+    if(!token){
+      error.textContent = "Введите токен";
+      return;
+    }
+
+    verifyToken(token);
+
+  });
+
+  input.addEventListener("keydown",(e)=>{
+    if(e.key === "Enter"){
+      btn.click();
     }
   });
+
+  window.addEventListener("load", async () => {
+
+    const savedToken = localStorage.getItem("quiz_token");
+
+    if(!savedToken){
+      return;
+    }
+
+    try {
+
+      await verifyToken(savedToken);
+
+    } catch(e){
+
+      localStorage.removeItem("quiz_token");
+
+    }
+
+  });
+
 })();
 </script>
 </body>
