@@ -586,6 +586,72 @@ body::before {
 .screen.active .brand-name { animation: fadeSlideUp 0.5s 0.1s ease both; }
 .screen.active .stats-row { animation: fadeSlideUp 0.5s 0.2s ease both; }
 .screen.active .mode-grid { animation: fadeSlideUp 0.5s 0.3s ease both; }
+
+/* --- НОВОЕ: Поиск в шпаргалке --- */
+.browse-search-wrap {
+  padding: 10px 16px 4px;
+  flex-shrink: 0;
+  background: rgba(17,24,39,0.5);
+  border-bottom: 1px solid var(--border);
+}
+.browse-search-input {
+  width: 100%; padding: 10px 14px;
+  border-radius: 12px;
+  border: 1.5px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.browse-search-input:focus { border-color: var(--purple); }
+.browse-search-input::placeholder { color: var(--muted); }
+
+/* --- НОВОЕ: Таймер экзамена --- */
+#examTimerDisplay {
+  font-family: var(--font-head);
+  font-size: 14px; font-weight: 700;
+  color: var(--text);
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  transition: color 0.3s, background 0.3s, border-color 0.3s;
+  flex-shrink: 0;
+}
+#examTimerDisplay.warning {
+  color: var(--error);
+  background: rgba(239,68,68,0.12);
+  border-color: rgba(239,68,68,0.4);
+  animation: timerBlink 1s ease-in-out infinite;
+}
+@keyframes timerBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* --- НОВОЕ: Избранное (звёздочки) --- */
+.fav-btn {
+  background: none; border: none;
+  font-size: 18px; cursor: pointer;
+  padding: 2px 6px; border-radius: 8px;
+  color: var(--muted);
+  transition: color 0.15s, transform 0.15s;
+  flex-shrink: 0; line-height: 1;
+}
+.fav-btn:active { transform: scale(0.85); }
+.fav-btn.active { color: #F59E0B; }
+.bi-header { display: flex; align-items: center; justify-content: space-between; }
+.fc-fav-btn {
+  background: none; border: none;
+  font-size: 20px; cursor: pointer;
+  color: var(--muted); padding: 4px;
+  transition: color 0.15s, transform 0.15s;
+  line-height: 1;
+}
+.fc-fav-btn:active { transform: scale(0.85); }
+.fc-fav-btn.active { color: #F59E0B; }
 </style>
   <script>
 window.Telegram = window.Telegram || {};
@@ -661,7 +727,7 @@ window.Telegram = window.Telegram || {};
 </div>
 
 <div id="examScreen" class="screen">
-  <div class="topbar"><div class="back" id="eBack">‹</div><div style="flex:1"><div class="tb-title">Экзамен</div><div class="tb-sub" id="eS"></div></div><span style="font-size:13px;color:var(--muted)" id="eTm">⏱ 0:00</span></div>
+  <div class="topbar"><div class="back" id="eBack">‹</div><div style="flex:1"><div class="tb-title">Экзамен</div><div class="tb-sub" id="eS"></div></div><span id="examTimerDisplay">⏱ 40:00</span></div>
   <div class="pw"><div class="pt"><div class="pf" id="eP" style="width:0%"></div></div><div class="pi"><span id="ePL"></span><span id="ePR"></span></div></div>
   <div class="qnav"><div class="qni" id="eN"></div></div>
   <div class="sc" id="eA"></div>
@@ -682,6 +748,10 @@ window.Telegram = window.Telegram || {};
 
 <div id="browseScreen" class="screen">
   <div class="topbar"><div class="back" id="bwBack">‹</div><div><div class="tb-title" id="bwT">Шпаргалка</div><div class="tb-sub" id="bwS"></div></div></div>
+  <!-- --- НОВОЕ: Поиск в шпаргалке --- -->
+  <div class="browse-search-wrap">
+    <input type="text" id="browseSearch" class="browse-search-input" placeholder="🔍 Поиск по вопросам, ответам, номеру...">
+  </div>
   <div class="sc" id="bwA"></div>
 </div>
 
@@ -715,6 +785,32 @@ var selDisc=null;
 var qQs=[],qIdx=0,qSel={},qAns={},qCor=0,qWrg=0;
 var eQs=[],eIdx=0,eSel={},eStart=0,eTI=null;
 var fQs=[],fIdx=0;
+
+// --- НОВОЕ: Таймер экзамена --- константа длительности в секундах
+var EXAM_DURATION_SEC = 40 * 60; // 40 минут
+
+// --- НОВОЕ: Избранное --- вспомогательные функции
+function favKey(disc, num){ return 'fav__' + disc + '__' + num; }
+function isFav(disc, num){ return localStorage.getItem(favKey(disc, num)) === '1'; }
+function toggleFav(disc, num){
+  var k = favKey(disc, num);
+  if(localStorage.getItem(k)==='1') localStorage.removeItem(k);
+  else localStorage.setItem(k,'1');
+}
+function makeFavBtn(disc, num, extraClass){
+  var btn = document.createElement('button');
+  btn.className = (extraClass||'fav-btn') + (isFav(disc,num)?' active':'');
+  btn.title = 'В избранное';
+  btn.textContent = '⭐';
+  btn.setAttribute('data-disc', disc);
+  btn.setAttribute('data-num', num);
+  btn.addEventListener('click', function(e){
+    e.stopPropagation();
+    toggleFav(disc, num);
+    this.classList.toggle('active');
+  });
+  return btn;
+}
 
 // ── SUPABASE CONFIG ──
 var SUPA_URL = "https://rusbxnqjyaqpegenafnq.supabase.co";
@@ -1111,13 +1207,28 @@ function showQResult(){
 
 /* ── EXAM ── */
 function startExam(){
-  eQs=shuf(ALL).slice(0,40);eIdx=0;eSel={};eStart=Date.now();
+  eQs=shuf(ALL).slice(0,40);eIdx=0;eSel={};
   buildNav('eN',eQs,function(i){eIdx=i;renderE();});
   renderE();showS('examScreen');setMascotEmotion('🤔');
+  // --- НОВОЕ: Умный таймер экзамена ---
   if(eTI)clearInterval(eTI);
+  eStart=Date.now();
   eTI=setInterval(function(){
-    var s=Math.floor((Date.now()-eStart)/1000);
-    $('eTm').textContent='⏱ '+Math.floor(s/60)+':'+(s%60<10?'0':'')+s%60;
+    var elapsed=Math.floor((Date.now()-eStart)/1000);
+    var remaining=EXAM_DURATION_SEC-elapsed;
+    if(remaining<=0){
+      clearInterval(eTI);eTI=null;
+      $('examTimerDisplay').textContent='⏱ 0:00';
+      $('examTimerDisplay').classList.add('warning');
+      finishExam();
+      return;
+    }
+    var m=Math.floor(remaining/60), s=remaining%60;
+    $('examTimerDisplay').textContent='⏱ '+m+':'+(s<10?'0':'')+s;
+    // Предупреждение: менее 5 минут или менее 10% времени
+    var warnThresh=Math.min(5*60, Math.floor(EXAM_DURATION_SEC*0.1));
+    if(remaining<=warnThresh) $('examTimerDisplay').classList.add('warning');
+    else $('examTimerDisplay').classList.remove('warning');
   },1000);
 }
 
@@ -1247,6 +1358,11 @@ function renderF(){
   var fh=document.createElement('div');fh.className='fc-h';fh.textContent='❓ Нажми чтобы увидеть ответ';front.appendChild(fh);
   var fq=document.createElement('div');fq.className='fc-q';fq.textContent=q.question;front.appendChild(fq);
   var fo=document.createElement('div');fo.className='fc-o';fo.textContent=ot;front.appendChild(fo);
+  // --- НОВОЕ: Кнопка избранного на карточке ---
+  var ffav=makeFavBtn(q.disc,q.num,'fc-fav-btn');
+  ffav.style.cssText='position:absolute;top:10px;right:10px;';
+  front.style.position='relative';
+  front.appendChild(ffav);
   var back=document.createElement('div');back.className='fc-f fc-bk';
   var fal=document.createElement('div');fal.className='fc-al';fal.textContent='✓ Правильный ответ';back.appendChild(fal);
   var fa=document.createElement('div');fa.className='fc-a';fa.textContent=at;back.appendChild(fa);
@@ -1264,11 +1380,23 @@ function startBrowse(){
   var p=pool();var d=selDisc||'Все дисциплины';
   $('bwT').textContent=d.length>20?d.slice(0,18)+'…':d;$('bwS').textContent=p.length+' вопросов';
   var area=$('bwA');while(area.firstChild)area.removeChild(area.firstChild);
+
+  // --- НОВОЕ: Сброс поля поиска ---
+  var searchInput=$('browseSearch');
+  searchInput.value='';
+
   for(var i=0;i<p.length;i++){
     var q=p[i];var letters=cl(q);
     var at=letters.map(function(l){return l.toUpperCase()+') '+(q.options[l]||'');}).join(', ');
     var bi=document.createElement('div');bi.className='bi';
-    var bn=document.createElement('div');bn.className='bn2';bn.textContent=q.disc+' · Q'+q.num+(q.user_verified?' ✓':'');bi.appendChild(bn);
+
+    // --- НОВОЕ: Хедер с кнопкой избранного ---
+    var biHeader=document.createElement('div');biHeader.className='bi-header';
+    var bn=document.createElement('div');bn.className='bn2';bn.textContent=q.disc+' · Q'+q.num+(q.user_verified?' ✓':'');
+    biHeader.appendChild(bn);
+    biHeader.appendChild(makeFavBtn(q.disc, q.num, 'fav-btn'));
+    bi.appendChild(biHeader);
+
     // Table
     if(q.table_html){var tw=document.createElement('div');tw.className='q-table-wrap';tw.style.marginBottom='8px';tw.innerHTML=q.table_html;bi.appendChild(tw);}
     // Image
@@ -1284,8 +1412,25 @@ function startBrowse(){
       bo.appendChild(bol);bo.appendChild(bot);bi.appendChild(bo);
     }
     if(q.explanation){var bex=document.createElement('div');bex.className='bex';bex.textContent=q.explanation;bi.appendChild(bex);}
+
+    // --- НОВОЕ: Сохраняем данные для поиска в data-атрибутах ---
+    bi.setAttribute('data-q', (q.num+' '+q.question+' '+Object.values(q.options).join(' ')).toLowerCase());
+
     area.appendChild(bi);
   }
+
+  // --- НОВОЕ: Живой поиск по шпаргалке ---
+  searchInput.oninput = function(){
+    var val=this.value.trim().toLowerCase();
+    var items=area.querySelectorAll('.bi');
+    for(var i=0;i<items.length;i++){
+      if(!val || items[i].getAttribute('data-q').indexOf(val)>=0)
+        items[i].style.display='';
+      else
+        items[i].style.display='none';
+    }
+  };
+
   showS('browseScreen');
 }
 
